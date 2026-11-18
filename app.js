@@ -2,7 +2,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getAuth, signInWithEmailAndPassword, updatePassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, addDoc, updateDoc, query, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// YOUR FIREBASE CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyDo00xkz9zlu5crDCu3ZfpPt3-zVsypgPU",
   authDomain: "staff-eba40.firebaseapp.com",
@@ -22,6 +21,7 @@ const staffSection = document.getElementById("staff-section");
 const adminSection = document.getElementById("admin-section");
 
 let currentStaff = null;
+let allLogsCache = []; // Caches logs for Admin searching/filtering
 
 function getTodayDate() {
   const now = new Date();
@@ -31,13 +31,11 @@ function getTodayDate() {
 // 1. AUTO-RESTORE SESSION ON PAGE REFRESH
 onAuthStateChanged(auth, async (user) => {
   if (user) {
-    // Admin is already logged in
     loader.classList.add("hidden");
     loginSection.classList.add("hidden");
     adminSection.classList.remove("hidden");
     loadAdminData();
   } else {
-    // Check if Staff is saved in localStorage
     const savedStaffId = localStorage.getItem("loggedStaffId");
     if (savedStaffId) {
       const snap = await getDoc(doc(db, "staff", savedStaffId));
@@ -52,7 +50,6 @@ onAuthStateChanged(auth, async (user) => {
         localStorage.removeItem("loggedStaffId");
       }
     }
-    // Nobody logged in -> show Login screen
     loader.classList.add("hidden");
     loginSection.classList.remove("hidden");
   }
@@ -69,7 +66,6 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
   if (idInput.includes("@")) {
     try {
       await signInWithEmailAndPassword(auth, idInput, passInput);
-      // onAuthStateChanged will automatically switch to Admin view
     } catch (err) {
       errorEl.textContent = "Invalid Admin email or password.";
     }
@@ -78,7 +74,7 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
     const snap = await getDoc(doc(db, "staff", staffId));
     if (snap.exists() && snap.data().password === passInput) {
       currentStaff = { id: snap.id, ...snap.data() };
-      localStorage.setItem("loggedStaffId", staffId); // Save session for refresh
+      localStorage.setItem("loggedStaffId", staffId);
       loginSection.classList.add("hidden");
       staffSection.classList.remove("hidden");
       loadStaffPortal();
@@ -145,7 +141,6 @@ document.getElementById("punch-in-btn").addEventListener("click", async () => {
 
   try {
     const today = getTodayDate();
-    // Double-check database to ensure no duplicate punch-in today
     const q = query(collection(db, "attendance"), where("staffId", "==", currentStaff.id), where("date", "==", today));
     const existing = await getDocs(q);
     if (!existing.empty) {
@@ -207,7 +202,7 @@ document.getElementById("punch-out-btn").addEventListener("click", async () => {
   }
 });
 
-// 6. LOAD STAFF PORTAL & ENFORCE DAILY BUTTON LOCKS
+// 6. LOAD STAFF PORTAL
 async function loadStaffPortal() {
   const today = getTodayDate();
   document.getElementById("staff-welcome").textContent = `${currentStaff.name} (${currentStaff.id})`;
@@ -225,7 +220,7 @@ async function loadStaffPortal() {
 
   const logs = [];
   snap.forEach((d) => logs.push(d.data()));
-  logs.sort((a, b) => b.punchIn - a.punchIn); // Newest first
+  logs.sort((a, b) => b.punchIn - a.punchIn);
 
   logs.forEach((d) => {
     if (d.date === today) todayRecord = d;
@@ -242,7 +237,6 @@ async function loadStaffPortal() {
     </tr>`;
   });
 
-  // Enforce Once-Per-Day Punch In / Punch Out Buttons
   const btnIn = document.getElementById("punch-in-btn");
   const btnOut = document.getElementById("punch-out-btn");
   const badge = document.getElementById("today-status-badge");
@@ -264,7 +258,6 @@ async function loadStaffPortal() {
     badge.textContent = "Completed for Today";
   }
 
-  // Update Staff Stats
   const perDayPay = ((currentStaff.salary / 30) * uniqueDays.size).toFixed(0);
   const perHourPay = ((currentStaff.salary / 240) * totalHours).toFixed(0);
   document.getElementById("staff-days-count").textContent = uniqueDays.size;
@@ -272,15 +265,21 @@ async function loadStaffPortal() {
   document.getElementById("staff-salary-est").textContent = `₹${perDayPay} / ₹${perHourPay}`;
 }
 
-// 7. LOAD ADMIN DASHBOARD
+// 7. ADMIN: LOAD DATA & RENDER ATTENDANCE REPORTS
 async function loadAdminData() {
   const today = getTodayDate();
   const staffSnap = await getDocs(collection(db, "staff"));
   const attSnap = await getDocs(collection(db, "attendance"));
 
-  const logs = [];
-  attSnap.forEach((d) => logs.push(d.data()));
-  logs.sort((a, b) => b.punchIn - a.punchIn);
+  allLogsCache = [];
+  attSnap.forEach((d) => allLogsCache.push(d.data()));
+  allLogsCache.sort((a, b) => b.punchIn - a.punchIn);
+
+  // Set Default Month on loader (YYYY-MM)
+  if(!document.getElementById("report-month").value) {
+    const currentMonth = today.substring(0, 7);
+    document.getElementById("report-month").value = currentMonth;
+  }
 
   const staffTbody = document.getElementById("admin-staff-list");
   staffTbody.innerHTML = "";
@@ -291,7 +290,7 @@ async function loadAdminData() {
   staffSnap.forEach((sDoc) => {
     totalStaffCount++;
     const s = sDoc.data();
-    const sLogs = logs.filter((l) => l.staffId === sDoc.id);
+    const sLogs = allLogsCache.filter((l) => l.staffId === sDoc.id);
     const days = new Set(sLogs.map((l) => l.date)).size;
     const hrs = sLogs.reduce((sum, l) => sum + (l.punchOut ? (l.punchOut - l.punchIn) / 3600000 : 0), 0);
 
@@ -310,29 +309,87 @@ async function loadAdminData() {
     </tr>`;
   });
 
-  // Update Admin Summary Cards
-  const presentTodayCount = new Set(logs.filter((l) => l.date === today).map((l) => l.staffId)).size;
+  const presentTodayCount = new Set(allLogsCache.filter((l) => l.date === today).map((l) => l.staffId)).size;
   document.getElementById("stat-total-staff").textContent = totalStaffCount;
   document.getElementById("stat-present-today").textContent = presentTodayCount;
   document.getElementById("stat-total-payroll").textContent = `₹${totalPayrollDayWise}`;
 
-  // Populate Attendance Logs
-  const logTbody = document.getElementById("admin-logs");
-  logTbody.innerHTML = "";
-  logs.forEach((l) => {
-    const hrs = l.punchOut ? ((l.punchOut - l.punchIn) / 3600000).toFixed(2) + "h" : '<span class="status-pill active">Active</span>';
-    logTbody.innerHTML += `<tr>
-      <td><strong>${l.staffName}</strong> (${l.staffId})</td>
-      <td>${l.date}</td>
-      <td>${new Date(l.punchIn).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
-      <td>${l.punchOut ? new Date(l.punchOut).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "-"}</td>
-      <td>${hrs}</td>
-      <td><a class="map-link" href="https://maps.google.com/?q=${l.inCoords}" target="_blank">In GPS</a></td>
-    </tr>`;
+  renderReports();
+}
+
+// 8. ADMIN: FILTER & EXPORT REPORTS (ADMIN ONLY ACCESS)
+function renderReports() {
+  const searchTerm = document.getElementById("report-search").value.toLowerCase();
+  const selectedMonth = document.getElementById("report-month").value; // "YYYY-MM"
+  
+  const filteredLogs = allLogsCache.filter(log => {
+    const matchSearch = log.staffName.toLowerCase().includes(searchTerm) || log.staffId.toLowerCase().includes(searchTerm);
+    const matchMonth = log.date.startsWith(selectedMonth);
+    return matchSearch && matchMonth;
+  });
+
+  const reportsTbody = document.getElementById("admin-reports-tbody");
+  reportsTbody.innerHTML = "";
+
+  if(filteredLogs.length === 0) {
+    reportsTbody.innerHTML = `<tr><td colspan="8" class="muted" style="text-align: center; padding: 24px;">No matching reports found for this period.</td></tr>`;
+    return;
+  }
+
+  filteredLogs.forEach(l => {
+    const duration = l.punchOut ? ((l.punchOut - l.punchIn) / 3600000).toFixed(2) + " hrs" : "-";
+    const statusPill = l.punchOut ? '<span class="status-pill done">Completed</span>' : '<span class="status-pill active">Working</span>';
+    
+    reportsTbody.innerHTML += `
+      <tr>
+        <td><strong>${l.date}</strong></td>
+        <td><code>${l.staffId}</code></td>
+        <td><strong>${l.staffName}</strong></td>
+        <td>${new Date(l.punchIn).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
+        <td>${l.punchOut ? new Date(l.punchOut).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "-"}</td>
+        <td>${duration}</td>
+        <td>${statusPill}</td>
+        <td><a class="map-link" href="https://maps.google.com/?q=${l.inCoords}" target="_blank">View Map 📍</a></td>
+      </tr>
+    `;
   });
 }
 
-// 8. LOGOUT HANDLERS
+// Attach Filters to input fields
+document.getElementById("report-search").addEventListener("input", renderReports);
+document.getElementById("report-month").addEventListener("change", renderReports);
+
+// Export Filtered Table data directly as CSV (only admin)
+document.getElementById("btn-export").addEventListener("click", () => {
+  const searchTerm = document.getElementById("report-search").value.toLowerCase();
+  const selectedMonth = document.getElementById("report-month").value;
+
+  const exportLogs = allLogsCache.filter(log => {
+    const matchSearch = log.staffName.toLowerCase().includes(searchTerm) || log.staffId.toLowerCase().includes(searchTerm);
+    const matchMonth = log.date.startsWith(selectedMonth);
+    return matchSearch && matchMonth;
+  });
+
+  if (exportLogs.length === 0) return alert("No data available to export.");
+
+  let csvContent = "Date,Staff ID,Staff Name,Punch In,Punch Out,Working Hours,GPS Latitude/Longitude\n";
+  exportLogs.forEach(l => {
+    const punchOutTime = l.punchOut ? new Date(l.punchOut).toLocaleTimeString() : "Working";
+    const hrs = l.punchOut ? ((l.punchOut - l.punchIn) / 3600000).toFixed(2) : "0";
+    csvContent += `"${l.date}","${l.staffId}","${l.staffName}","${new Date(l.punchIn).toLocaleTimeString()}","${punchOutTime}","${hrs}","${l.inCoords}"\n`;
+  });
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `glox_attendance_report_${selectedMonth || "all"}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+});
+
+// 9. LOGOUT HANDLERS
 document.getElementById("staff-logout").onclick = () => {
   localStorage.removeItem("loggedStaffId");
   location.reload();
