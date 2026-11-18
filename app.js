@@ -4,14 +4,13 @@ import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, addD
 
 // PASTE YOUR FIREBASE CONFIG HERE
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyDo00xkz9zlu5crDCu3ZfpPt3-zVsypgPU",
+  authDomain: "staff-eba40.firebaseapp.com",
+  projectId: "staff-eba40",
+  storageBucket: "staff-eba40.firebasestorage.app",
+  messagingSenderId: "69026802540",
+  appId: "1:69026802540:web:e65f8e40e32e37461d2149"
 };
-
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
