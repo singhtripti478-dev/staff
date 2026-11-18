@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>StaffFlow | Attendance & Payroll</title>
+  <title>Glox | Attendance & Payroll Portal</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -19,14 +19,15 @@
   <div id="login-section" class="center-screen hidden">
     <div class="login-card">
       <div class="brand-header">
-        <div class="logo-badge">SF</div>
-        <h1>StaffFlow Portal</h1>
-        <p class="subtitle">Sign in with Admin Email or Staff ID</p>
+        <!-- Glox G-Logo -->
+        <img src="https://images.squarespace-cdn.com/content/v1/660c0bf102f928236113b2d1/8a867db5-b825-4c07-ba96-fb2a4d9b2361/image_1.png" alt="Glox Logo" class="brand-logo" />
+        <h1>Glox</h1>
+        <p class="subtitle">Attendance & Payroll Portal</p>
       </div>
       <form id="login-form">
         <div class="input-group">
           <label>Admin Email or Staff ID</label>
-          <input type="text" id="login-id" placeholder="e.g. admin@email.com or EMP01" required />
+          <input type="text" id="login-id" placeholder="e.g. admin@glox.com or EMP01" required />
         </div>
         <div class="input-group">
           <label>Password</label>
@@ -42,7 +43,7 @@
   <div id="staff-section" class="app-wrapper hidden">
     <header class="topbar">
       <div class="topbar-brand">
-        <span class="logo-badge sm">SF</span>
+        <img src="https://images.squarespace-cdn.com/content/v1/660c0bf102f928236113b2d1/8a867db5-b825-4c07-ba96-fb2a4d9b2361/image_1.png" alt="Glox Logo" class="brand-logo-sm" />
         <div>
           <h2 id="staff-welcome">Welcome</h2>
           <span id="staff-info" class="badge-role">Staff</span>
@@ -114,10 +115,10 @@
   <div id="admin-section" class="app-wrapper hidden">
     <header class="topbar">
       <div class="topbar-brand">
-        <span class="logo-badge sm">SF</span>
+        <img src="https://images.squarespace-cdn.com/content/v1/660c0bf102f928236113b2d1/8a867db5-b825-4c07-ba96-fb2a4d9b2361/image_1.png" alt="Glox Logo" class="brand-logo-sm" />
         <div>
-          <h2>Admin Dashboard</h2>
-          <span class="muted">Manage Staff, Attendance & Payroll</span>
+          <h2>Glox Admin</h2>
+          <span class="muted">Attendance & Payroll Dashboard</span>
         </div>
       </div>
       <div class="topbar-actions">
@@ -150,6 +151,35 @@
         <div class="stat-card highlight-card">
           <span class="stat-label">Total Monthly Payroll (Day-wise)</span>
           <h2 id="stat-total-payroll">₹0</h2>
+        </div>
+      </div>
+
+      <!-- ATTENDANCE REPORTS SECTION (ADMIN ONLY) -->
+      <div class="card bg-highlight">
+        <div class="card-header-flex">
+          <h3>📊 Attendance Reports</h3>
+          <div class="report-controls">
+            <input type="text" id="report-search" placeholder="Search by ID or Name..." />
+            <input type="month" id="report-month" />
+            <button id="btn-export" class="btn-outline">Export CSV</button>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Staff ID</th>
+                <th>Name</th>
+                <th>Punch In</th>
+                <th>Punch Out</th>
+                <th>Working Hours</th>
+                <th>Status</th>
+                <th>GPS Location</th>
+              </tr>
+            </thead>
+            <tbody id="admin-reports-tbody"></tbody>
+          </table>
         </div>
       </div>
 
@@ -200,26 +230,6 @@
               </tr>
             </thead>
             <tbody id="admin-staff-list"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Live Attendance Logs -->
-      <div class="card">
-        <h3>All Attendance Logs</h3>
-        <div class="table-responsive">
-          <table>
-            <thead>
-              <tr>
-                <th>Staff</th>
-                <th>Date</th>
-                <th>Punch In</th>
-                <th>Punch Out</th>
-                <th>Duration</th>
-                <th>GPS Map</th>
-              </tr>
-            </thead>
-            <tbody id="admin-logs"></tbody>
           </table>
         </div>
       </div>
